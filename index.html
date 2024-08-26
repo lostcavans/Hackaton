@@ -1,0 +1,198 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/4.7.0/pixi.min.js"></script>
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <main>
+        <div class="buttonContainer">
+            <h1>Teste Hackaton imagen 2D a 3D</h1>
+            <button class="btn" id="btnPrevious" onclick="previous()"><</button>
+            <button class="btn" id="btnNext" onclick="next()">></button>
+            <button class="btn" id="btnRunScript" onclick="runPythonScript()">Run Python Script</button>
+        </div>
+        <canvas id="canvas" style="width: 100%; height: 100%;"></canvas>
+    </main>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: white;
+        }
+        .btn {
+            background-color: white;
+            color: black;
+            padding: 2rem;
+            outline: none;
+            margin-right: 0.5rem;
+            border: 3px solid black;
+        }
+        main {
+            display: flex;
+            flex-direction: column;
+        }
+        .buttonContainer {
+            display: flex;
+            padding-bottom: 3rem;
+            margin-left: 3rem;
+        }
+        h1 {
+            padding-right: 2rem;
+        }
+    </style>
+    <script>
+        var images = [
+            { name: "scarlet.jpg", width: 600, height: 700 },
+            { name: "rei.jpg", width: 800, height: 800 },
+            { name: "cat.jpg", width: 800, height: 500 },
+            { name: "vegeta.png", width: 900, height: 450 },
+            { name: "assets/1.webp", width: 900, height: 450 },
+            { name: "assets/5.webp", width: 900, height: 450 },
+            { name: "assets/7.webp", width: 900, height: 450 },
+            { name: "assets/output/face_2.jpg", width: 800, height: 1200 },
+            { name: "assets/output/face_4.jpg", width: 800, height: 1200 },
+            { name: "assets/output/face_5.jpg", width: 800, height: 1200 },
+            { name: "assets/output/face_6.jpg", width: 800, height: 1200 },
+            { name: "assets/output/face_7.jpg", width: 800, height: 1200 },
+            { name: "assets/output/face_8.jpg", width: 800, height: 1200 }
+        ];
+
+        var index = 0;
+        var image = images[index];
+        var initTexture = PIXI.Texture.fromImage(image.name);
+        var canvasWidth = document.body.offsetWidth;
+        var canvasHeight = document.body.offsetHeight;
+        var app = new PIXI.Application(canvasWidth, canvasHeight, {
+            antialias: true,
+            transparent: true,
+            view: document.querySelector("#canvas")
+        });
+
+        app.stage.alpha = 1;
+        app.stage.interactive = true;
+
+        var layer2 = PIXI.Sprite.from(initTexture);
+        layer2.width = image.width;
+        layer2.height = image.height;
+        layer2.x = document.body.offsetWidth / 2 - layer2.width;
+        layer2.y = 0;
+
+        var displacementFilterTexture = PIXI.Sprite.fromImage(
+            "../Hackaton/disp_map.jpg"
+        );
+        displacementFilterTexture.width = image.width;
+        displacementFilterTexture.height = image.height;
+        displacementFilterTexture.x = document.body.offsetWidth / 2 - displacementFilterTexture.width;
+        displacementFilterTexture.y = 0;
+
+        var mainContainer = new PIXI.Container();
+        mainContainer.addChild(displacementFilterTexture);
+
+        var additionalContainer = new PIXI.Container();
+        additionalContainer.addChild(layer2);
+
+        var circle = null;
+        mainContainer.addChild(additionalContainer);
+
+        var displacementFilter = new PIXI.filters.DisplacementFilter(
+            displacementFilterTexture,
+            0
+        );
+
+        layer2.filters = [displacementFilter];
+        app.stage.addChild(mainContainer);
+
+        setMoveHandlers(app, circle, displacementFilter);
+
+        function setMoveHandlers(app, circle, displacementFilter) {
+            app.stage
+                .on("mousemove", onPointerMove.bind(circle, displacementFilter))
+                .on("touchmove", onPointerMove.bind(circle, displacementFilter));
+        }
+
+        function onPointerMove(displacementFilter, eventData) {
+            setTilt(
+                30,
+                eventData.data.global.x,
+                eventData.data.global.y,
+                displacementFilter
+            );
+        }
+
+        function setTilt(maxTilt, mouseX, mouseY, displacementFilter) {
+            var midpointX = document.body.offsetWidth / 2,
+                midpointY = document.body.offsetHeight / 2,
+                posX = midpointX - mouseX,
+                posY = midpointY - mouseY,
+                valX = posX / midpointX * maxTilt,
+                valY = posY / midpointY * maxTilt;
+            displacementFilter.scale.x = valX;
+            displacementFilter.scale.y = valY;
+        }
+
+        function next() {
+            if (index >= images.length - 1) {
+                return;
+            } else {
+                index++;
+            }
+            image = images[index];
+            var newTexture = PIXI.Texture.fromImage(image.name);
+
+            layer2.texture = newTexture;
+            layer2.width = image.width;
+            layer2.height = image.height;
+            layer2.x = document.body.offsetWidth / 2 - layer2.width;
+            layer2.y = 0;
+
+            displacementFilterTexture.width = image.width;
+            displacementFilterTexture.height = image.height;
+            displacementFilterTexture.x = document.body.offsetWidth / 2 - displacementFilterTexture.width;
+            displacementFilterTexture.y = 0;
+            console.log(image);
+        }
+
+        function previous() {
+            if (index == 0) {
+                return;
+            } else {
+                index--;
+            }
+            image = images[index];
+            var newTexture = PIXI.Texture.fromImage(image.name);
+
+            layer2.texture = newTexture;
+            layer2.width = image.width;
+            layer2.height = image.height;
+            layer2.x = document.body.offsetWidth / 2 - layer2.width;
+            layer2.y = 0;
+
+            displacementFilterTexture.width = image.width;
+            displacementFilterTexture.height = image.height;
+            displacementFilterTexture.x = document.body.offsetWidth / 2 - displacementFilterTexture.width;
+            displacementFilterTexture.y = 0;
+            console.log(image);
+        }
+
+        function runPythonScript() {
+            fetch('/run-script', {
+                method: 'POST',
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Script Output:', data.stdout);
+                console.error('Script Errors:', data.stderr);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+    </script>
+</body>
+</html>

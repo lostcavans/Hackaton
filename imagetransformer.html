@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detector de Rostros</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f4f4;
+        }
+        .container {
+            text-align: center;
+            background-color: #fff;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+        .panel img {
+            max-width: 100%;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .buttons {
+            margin-top: 20px;
+        }
+        .buttons button {
+            margin: 5px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #007bff;
+            color: white;
+        }
+        .buttons input {
+            margin: 5px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: 1px solid #007bff;
+            border-radius: 5px;
+            background-color: #fff;
+            color: #007bff;
+        }
+        #message {
+            margin-top: 20px;
+            font-weight: bold;
+            color: #ff0000;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Detector de Rostros</h1>
+        <div class="panel">
+            <img id="image" alt="Cargar una imagen" />
+        </div>
+        <div class="buttons">
+            <input type="file" id="file-input" accept="image/*" />
+            <button id="detect-btn">Detectar Rostros</button>
+        </div>
+        <div id="message"></div>
+    </div>
+
+    <!-- TensorFlow.js y face-api.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@2.7.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Seleccionar el backend 'webgl'
+            await tf.setBackend('webgl');
+            await tf.ready();
+
+            // Cargar los modelos de face-api.js desde las rutas relativas
+            await faceapi.nets.ssdMobilenetv1.loadFromUri('/weights/');
+            await faceapi.nets.faceLandmark68Net.loadFromUri('/weights/');
+            await faceapi.nets.faceRecognitionNet.loadFromUri('/weights/');
+
+            document.getElementById('file-input').addEventListener('change', loadImage);
+            document.getElementById('detect-btn').addEventListener('click', detectFaces);
+        });
+
+        let loadedImage;
+
+        async function loadImage(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const img = document.getElementById('image');
+            img.src = URL.createObjectURL(file);
+            loadedImage = img;
+        }
+
+        async function detectFaces() {
+            if (!loadedImage) {
+                alert('Por favor, carga una imagen primero.');
+                return;
+            }
+
+            const detections = await faceapi.detectAllFaces(loadedImage).withFaceLandmarks().withFaceDescriptors();
+
+            if (detections.length === 0) {
+                document.getElementById('message').innerText = "No se encontraron rostros.";
+            } else {
+                document.getElementById('message').innerText = `Se detectaron ${detections.length} rostros.`;
+                drawDetections(detections);
+            }
+        }
+
+        function drawDetections(detections) {
+            const img = document.getElementById('image');
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, img.width, img.height);
+
+            detections.forEach(detection => {
+                const { x, y, width, height } = detection.detection.box;
+                ctx.strokeStyle = '#FF0000';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(x, y, width, height);
+            });
+
+            document.querySelector('.panel').appendChild(canvas);
+            img.style.display = 'none';
+        }
+    </script>
+</body>
+</html>
